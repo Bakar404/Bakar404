@@ -1,33 +1,17 @@
 {
- "round": 1,
- "last_issue": 1,
+ "round": 0,
+ "last_issue": 0,
  "totals": {
-  "humans": 3,
-  "bot": 3
+  "humans": 0,
+  "bot": 0
  },
  "outcomes": {
-  "CC": 1,
+  "CC": 0,
   "CD": 0,
   "DC": 0,
   "DD": 0
  },
- "last_human_move": "C",
- "players": {
-  "Bakar404": {
-   "last": "C",
-   "rounds": 1,
-   "points": 3
-  }
- },
- "history": [
-  {
-   "round": 1,
-   "player": "Bakar404",
-   "human": "C",
-   "bot": "C",
-   "reason": "opening",
-   "issue": 1,
-   "at": "2026-10-18T23:22:28Z"
-  }
- ]
+ "last_human_move": null,
+ "players": {},
+ "history": []
 }
