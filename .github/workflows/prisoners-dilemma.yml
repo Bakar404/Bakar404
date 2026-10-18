@@ -1,0 +1,48 @@
+name: prisoners-dilemma
+
+on:
+  issues:
+    types: [opened]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+# One game at a time. GitHub keeps only the newest queued run, which is fine:
+# every run drains all open moves, not just the issue that triggered it.
+concurrency:
+  group: prisoners-dilemma
+  cancel-in-progress: false
+
+jobs:
+  play:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.issue.title, 'pd')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Play every open move
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 src/bot.py play --plan "$RUNNER_TEMP/plan.json"
+
+      - name: Commit the board
+        run: |
+          git add data/pd.json assets/board-light.svg assets/board-dark.svg assets/board-phone.svg README.md
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          round=$(python3 -c 'import json; print(json.load(open("data/pd.json"))["round"])')
+          git commit -q -m "pd: round $round"
+          for attempt in 1 2 3; do
+            git push -q && exit 0
+            git pull -q --rebase
+          done
+          exit 1
+
+      - name: Reply to players
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 src/bot.py reply --plan "$RUNNER_TEMP/plan.json"
