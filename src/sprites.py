@@ -37,10 +37,6 @@ _BOT_EYES = [
     ".##pp##pp##pp##.",
     ".##pp##pp##pp##.",
 ]
-_BOT_EYES_SUSPICIOUS = [
-    ".##ppp#pp#ppp##.",
-    ".##pp##pp##pp##.",
-]
 _BOT_BOTTOM = [
     "..#pppppppppp#..",
     "..#pp######pp#..",
@@ -54,11 +50,20 @@ _BOT_BOTTOM = [
     ".##############.",
 ]
 BOT = _BOT_TOP + _BOT_EYES + _BOT_BOTTOM
-BOT_SUSPICIOUS = (
-    _BOT_TOP[:3] + ["..#p##pppp##p#.."] + _BOT_EYES_SUSPICIOUS
-    + ["..#pppppppppp#..", "..#pppp####pp#.."] + _BOT_BOTTOM[2:]
+BOT_SWEATING = (  # a drop on its head, a wobbly mouth
+    ["...........#....", ".......##.#p#..."] + _BOT_TOP[2:] + _BOT_EYES
+    + ["..#pppppppppp#..", "..#pp#p#p#p#p#..", "..#p#p#p#p#pp#.."] + _BOT_BOTTOM[3:]
 )
 BOT_ANTENNA_ROWS = 2  # rows 0-1: the antenna, animated separately
+
+# A match for the Nim heaps: yellow head, ink stick.
+MATCH = [
+    ".##.",
+    "#YY#",
+    "#YY#",
+    "#YY#",
+    ".##.",
+] + [".##."] * 7
 
 PEN_NIB = [
     "....########....",
@@ -136,6 +141,83 @@ MATRIX = [
     "###############",
 ]
 
+# Ahmed, waving: dark hair, glasses, a full beard, a navy blazer over a light-blue shirt.
+# Unlike the 1-bit art it keeps its colours in both themes; only the outline ('o') follows the
+# theme, which gives it a sticker edge on dark backgrounds.
+AVATAR = [
+    "......................................",
+    "......................ooooooo.........",
+    "....................ooHHHHHHHoo.......",
+    "...................oHHHhhhHHHHHo......",
+    "..................oHHhhHHHHHHHHHo.....",
+    ".................oHHhHHHHHHHHHHHo.....",
+    ".................oHHHHHHHHHHHHHHo.....",
+    ".................oHHHHHHHHHHHHHHo.....",
+    ".................oHHSHHSSSSHHSHHo.....",
+    ".................oHSSSSSSSSSSSSHo.....",
+    ".................oHGGGGGSSGGGGGHo.....",
+    "................osSGSsSGGGGSsSGSso....",
+    "................osSGSSSGSSGSSSGSso....",
+    "................osSSGGGSssSGGGSSso....",
+    ".................obSSSSSssSSSSSbo.....",
+    ".................obSSSBBBBBBSSSbo.....",
+    ".................obbSBMWWWWMBSbbo.....",
+    ".................obbbBBBBBBBBbbbo.....",
+    "..................obbbBBBBBBbbbo......",
+    ".....oNNNNNo.......obbBBBBBBbbo.......",
+    ".....oNNNnNo........oxBBBBBBxo........",
+    ".....oNNNnNo..........xxxxxx..........",
+    ".....oNNNnNo..........oSSSSo..........",
+    ".....oNNNnNo....oNNNnTTSSSSTTnNNNo....",
+    ".....oNNNnNo..oNNNNNNnTTSSTTnNNNNNNo..",
+    ".....oNNNnNo.oNNNNNNNnTTTTTTnNNNNNNNo.",
+    ".....oNNNnNooNNNNNNNNnTTTTTTnNNNNNNNNo",
+    ".....oNNNnNooNNNNNNNNNnTTTTnNNNNNNNNNo",
+    ".....oNNNnNooNNNNNNNNNnTTTTnNNNNNNNNNo",
+    ".....oNNNnNooNNNNNNNNNnTTTTnNNNNNNNNNo",
+    ".....oNNNnNooNNNNNNNNNnTTTTnNNNNNNNNNo",
+    ".....oNNNnNooNNNNNNNNNNnTTnNNNNNNNNNNo",
+    ".....oNNNnNooNNNNNNNNNNnTTnNNNNNNNNNNo",
+]
+_HAND_LEFT = [
+    ".o.o.o.o......",
+    "oSoSoSoSo.....",
+    "oSoSoSoSo.....",
+    ".oSsSsSsSo....",
+    ".oSSSSSSSoo...",
+    ".oSSSSSSSoSo..",
+    ".oSSSSSSSSSo..",
+    "...oSSSSSSSo..",
+    "....oSSSSSo...",
+    "....oTTTTTo...",
+]
+_HAND_RIGHT = [
+    ".....o.o.o.o..",
+    "....oSoSoSoSo.",
+    "....oSoSoSoSo.",
+    "...oSsSsSsSo..",
+    "...oSSSSSSSoo.",
+    "...oSSSSSSSoSo",
+    "...oSSSSSSSSSo",
+    "...oSSSSSSSo..",
+    "....oSSSSSo...",
+    "....oTTTTTo...",
+]
+AVATAR_HANDS = (_HAND_LEFT, _HAND_RIGHT)
+AVATAR_HAND_AT = (1, 9)
+AVATAR_EYES = [(21, 11), (28, 11)]
+AVATAR_COLOURS = {  # sprite char: (CSS class, colour)
+    "H": ("hair", "#2e1d15"), "h": ("hairlit", "#543a2e"),
+    "S": ("skin", "#d6a086"), "s": ("skindim", "#b07864"),
+    "B": ("beard", "#3a2720"), "b": ("stubble", "#7a5446"), "x": ("jaw", "#281a16"),
+    "G": ("specs", "#181212"), "E": ("specs", "#181212"),
+    "M": ("lips", "#7a342e"), "W": ("teeth", "#ffffff"),
+    "N": ("navy", "#1e2746"), "n": ("lapel", "#344470"), "T": ("shirt", "#b6ceec"),
+}
+AVATAR_PALETTE = {"o": "i", **{ch: cls for ch, (cls, _) in AVATAR_COLOURS.items()}}
+AVATAR_CSS = "".join(sorted({f".{cls}{{fill:{colour}}}" for cls, colour in AVATAR_COLOURS.values()}))
+
+
 # Selected frames for the interests menu, shown one at a time like a game's attract mode.
 def _swap(rows: list[str], x0: int, y0: int, x1: int, y1: int) -> list[str]:
     """Swap ink and panel inside a box, the way a 1-bit UI shows a selection."""
@@ -168,6 +250,6 @@ MATRIX_ON = (MATRIX[:1] + ["########......#"] * 6 + MATRIX[7:8]  # cooperation w
              + ["#......#dddddd#"] * 6 + MATRIX[14:])
 
 ALL = {
-    "human": HUMAN, "bot": BOT, "bot_suspicious": BOT_SUSPICIOUS,
+    "human": HUMAN, "bot": BOT, "bot_sweating": BOT_SWEATING, "match": MATCH,
     "pen_nib": PEN_NIB, "chip": CHIP, "toggles": TOGGLES, "matrix": MATRIX,
 }

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from itertools import combinations
 
-import pd
+import nim
 import sprites
 from pixel import SPACE_WIDTH, THEMES, Svg, cells_to_path, text_pixels, text_width
 
@@ -21,11 +21,12 @@ PAD = 32
 MPAD = 20
 SUMMARY_W = 760  # wider than its text so the phone version can use larger type
 PAL = sprites.PALETTE
-PAST = {"C": "COOPERATED", "D": "DEFECTED"}
+KEY_W = W // 6  # the keypad under the board: a label and up to five keys per row
+KEY_M = M // 6
 
 # Copy is stored in normal case for alt text; the pixel font renders it in capitals.
 NAME = "Ahmed Abdelsalam"
-TAGLINE = "Cooperate or defect? The bot remembers."
+LINE = "Hi, I'm Ahmed. I turn ideas into products, mostly with AI."
 SUMMARY = "How does the bot decide?"
 INTERESTS = [  # caption lines, icon, its selected frame
     (("Being", "creative"), sprites.PEN_NIB, sprites.PEN_NIB_ON),
@@ -34,11 +35,16 @@ INTERESTS = [  # caption lines, icon, its selected frame
     (("Game", "theory"), sprites.MATRIX, sprites.MATRIX_ON),
 ]
 TOOLS = [
-    ("Languages", ["Python", "TypeScript", "JavaScript", "Swift", "SQL", "C++", "DAX", "HTML/CSS"]),
-    ("Build", ["React", "Node.js", "FastAPI", "SwiftUI", "CoreAudio", "Tailwind", "Supabase",
-               "Firebase", "GitHub Actions"]),
-    ("Data + AI", ["MCP", "LLM agents", "Azure", "Fabric", "Power BI", "Data Factory", "Synapse",
-                   "Databricks", "pandas", "NumPy", "SciPy"]),
+    ("AI + agents", ["MCP", "LLM agents", "Multi-agent orchestration", "Agent evals",
+                     "Microsoft Agent Framework", "Anthropic API", "Azure AI"]),
+    ("Languages", ["Python", "TypeScript", "JavaScript", "Swift", "SQL", "C++", "R", "DAX",
+                   "HTML/CSS"]),
+    ("Build", ["React", "Next.js", "Vite", "Tailwind", "Node.js", "FastAPI", "SwiftUI",
+               "CoreAudio"]),
+    ("Data + cloud", ["Azure", "Microsoft Fabric", "Power BI", "Power Platform", "Data Factory",
+                      "Synapse", "Databricks", "pandas", "NumPy", "SciPy"]),
+    ("Ship", ["Supabase", "Firebase", "Cloudflare Workers", "GitHub Actions", "Playwright",
+              "Git", "Azure DevOps", "Jira"]),
 ]
 ANYTHING = "+ Anything that gets the job done"
 
@@ -48,6 +54,24 @@ BOB = "@keyframes bob{50%{transform:translateY(-4px)}}"
 BLINKING = ' style="animation:blink 1.06s step-end infinite"'
 BOBBING = [BOB, ".bob{animation:bob 1.2s step-end infinite}",
            ".bob2{animation:bob 1.2s step-end .6s infinite}"]
+# The avatar waves three times, rests, and blinks once in a while. Frame changes every 0.4s.
+WAVE = 4.8
+WAVING = [
+    "@keyframes wave-l{0%{opacity:1}8.333%{opacity:0}16.667%{opacity:1}25%{opacity:0}"
+    "33.333%{opacity:1}41.667%{opacity:0}50%{opacity:1}}",
+    "@keyframes wave-r{0%{opacity:0}8.333%{opacity:1}16.667%{opacity:0}25%{opacity:1}"
+    "33.333%{opacity:0}41.667%{opacity:1}50%{opacity:0}}",
+    "@keyframes lids{0%{opacity:1}72%{opacity:0}75%{opacity:1}}",
+]
+TAIL = [  # the speech box's tail, pointing at the speaker; column 5 is the box's left edge
+    ".....#",
+    "....#p",
+    "...#pp",
+    "..#ppp",
+    ".#pppp",
+    "######",
+]
+NEXT = {(0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (1, 1), (2, 1), (3, 1), (2, 2)}  # the RPG ▼
 
 
 def canvas(w: int, h: int, title: str, theme: str) -> Svg:
@@ -69,21 +93,19 @@ def section_label(s: Svg, text: str, y: float) -> None:
     s.text(text, 0, y, 2, "m", bold=True)
 
 
-def staircase(x: float, y: float, w: float, h: float, u: int) -> str:
-    """A pixel diagonal from the top-left to the bottom-right corner of a box."""
-    nx, ny = int(w // u), int(h // u)
-    return cells_to_path({(i, round(i * (ny - 1) / (nx - 1))) for i in range(nx)}, x, y, u)
+def runs_width(parts: list[tuple[str, str, bool]], u: int) -> int:
+    return (sum(text_width(t, u, b) for t, _, b in parts)
+            + (SPACE_WIDTH + 2) * u * (len(parts) - 1))
 
 
 def runs(s: Svg, parts: list[tuple[str, str, bool]], x: float, y: float, u: int,
          anchor: str = "start") -> None:
-    """One line of text made of differently styled runs: (text, class, bold)."""
-    widths = [text_pixels(t, b)[1] * u for t, _, b in parts]
-    total = sum(widths) + u * (len(parts) - 1)
+    """One line of text made of differently styled runs, (text, class, bold), a space apart."""
+    total = runs_width(parts, u)
     x -= total / 2 if anchor == "middle" else total if anchor == "end" else 0
-    for (text, cls, bold), w in zip(parts, widths):
+    for text, cls, bold in parts:
         s.text(text, x, y, u, cls, bold=bold)
-        x += w + u
+        x += text_width(text, u, bold) + (SPACE_WIDTH + 2) * u
 
 
 def typed(s: Svg, text: str, x: float, y: float, u: int, *, cls: str = "i", cursor: str = "i",
@@ -127,22 +149,76 @@ def typed(s: Svg, text: str, x: float, y: float, u: int, *, cls: str = "i", curs
     return delay + n * per
 
 
-# ----------------------------------------------------------------------------- header
+# ------------------------------------------------------------------------------- hero
 
-def name(theme: str) -> str:
-    u = 9  # 92 cells
-    s = canvas(W, 7 * u + 24, NAME, theme)
-    display(s, NAME, 0, 0, u)
+def hero_alt() -> str:
+    return f'{NAME}, drawn in pixels, waving: "{LINE}"'
+
+
+def avatar(s: Svg, x: float, y: float, u: int) -> None:
+    """The portrait: waving, and blinking now and then. Reduced motion keeps the first frame."""
+    s.css.extend([sprites.AVATAR_CSS, *WAVING])
+    pal = sprites.AVATAR_PALETTE
+    s.sprite(sprites.AVATAR, x, y, u, pal)
+    hx, hy = x + sprites.AVATAR_HAND_AT[0] * u, y + sprites.AVATAR_HAND_AT[1] * u
+    left, right = sprites.AVATAR_HANDS
+    s.sprite(left, hx, hy, u, pal, f' style="animation:wave-l {WAVE}s step-end infinite"')
+    s.sprite(right, hx, hy, u, pal, f' style="opacity:0;animation:wave-r {WAVE}s step-end infinite"')
+    s.path(cells_to_path(sprites.AVATAR_EYES, x, y, u), "specs",
+           f' style="animation:lids {WAVE}s step-end infinite"')
+
+
+def speech(s: Svg, lines: list[str], x: float, y: float, w: float, u: int, pad: int,
+           tail_y: float) -> float:
+    """An RPG dialog box that types `lines` out, then blinks its ▼. Returns its bottom edge."""
+    lh = 7 * u + 4 * u
+    h = 8 + 2 * pad + len(lines) * lh - 4 * u
+    s.path(notched(x, y, w, h, 4), "i")
+    s.path(notched(x + 4, y + 4, w - 8, h - 8, 4), "p")
+    s.sprite(TAIL, x - 20, tail_y, 4, {"#": "i", "p": "p"})
+    at = 0.6
+    for i, line in enumerate(lines):
+        at = typed(s, line, x + 4 + pad, y + 4 + pad + i * lh, u, caret=False, delay=at)
+    s.css.extend([TYPE, BLINK])
+    s.path(cells_to_path(NEXT, x + w - 4 - pad + u - 5 * u, y + h - 4 - pad + 4 * u - 3 * u, u), "i",
+           f' style="animation:type {at:.3f}s step-end both,blink 1.06s step-end {at:.3f}s infinite"')
+    return y + h
+
+
+def wrap(text: str, width: float, u: int) -> list[str]:
+    return flow(text.split(), width, u, sep=" ")
+
+
+def hero(theme: str) -> str:
+    u = 5
+    aw, ah = len(sprites.AVATAR[0]) * u, len(sprites.AVATAR) * u
+    s = canvas(W, 0, hero_alt(), theme)
+    x = aw + 32
+    display(s, NAME, x, u + 8, 6)
+    pad = 20
+    lines = wrap(LINE, W - x - 8 - 2 * pad, 3)
+    top = u + 8 + 42 + 24
+    bottom = speech(s, lines, x, top, W - x, 3, pad, tail_y=top + 12)
+    ay = max(0, bottom - ah)  # the portrait stands on the box's baseline
+    avatar(s, 0, ay, u)
+    s.height = int(max(bottom, ay + ah)) + 8
     return s.render()
 
 
-def name_mobile() -> str:
-    """Stacked, so a phone can show it larger than one line would allow."""
-    u = 7  # ABDELSALAM is 59 cells
+def hero_mobile() -> str:
+    """Name stacked on top, so it can be large; the portrait and its speech box below."""
+    nu, u = 7, 3
     first, last = NAME.split()
-    s = canvas(M, 17 * u + 16, NAME, "auto")
-    display(s, first, 0, 0, u)
-    display(s, last, 0, 10 * u, u)
+    aw, ah = len(sprites.AVATAR[0]) * u, len(sprites.AVATAR) * u
+    s = canvas(M, 0, hero_alt(), "auto")
+    display(s, first, 0, 0, nu)
+    display(s, last, 0, 10 * nu, nu)
+    y = 17 * nu + 16
+    avatar(s, 0, y, u)
+    x, pad = aw + 20, 14
+    lines = wrap(LINE, M - x - 8 - 2 * pad, 2)
+    bottom = speech(s, lines, x, y + u, M - x, 2, pad, tail_y=y + 12 * u)
+    s.height = int(max(bottom, y + ah)) + 8
     return s.render()
 
 
@@ -151,97 +227,7 @@ def display(s: Svg, text: str, x: float, y: float, u: int) -> None:
     s.path(cells_to_path(cells, x, y, u), "i")
 
 
-def tagline(theme: str) -> str:
-    s = canvas(W, 24, TAGLINE, theme)
-    typed(s, TAGLINE, 0, 0, 3)
-    return s.render()
-
-
-def tagline_mobile() -> str:
-    """Two lines, the second typing on where the first stops."""
-    first, second = TAGLINE.split("? ")
-    s = canvas(M, 24 + 31, TAGLINE, "auto")
-    done = typed(s, f"{first}?", 0, 0, 3, caret=False)
-    typed(s, second, 0, 31, 3, delay=done)
-    return s.render()
-
-
 # ------------------------------------------------------------------------------ board
-
-def matrix(s: Svg, last: dict | None, mx: float, ay: float, cw: int, ch: int, gap: int,
-           left: float | None = None) -> float:
-    """Payoff matrix in Schelling's notation, your payoff bottom-left and the bot's top-right,
-    with its labels. The last round's outcome is highlighted. Returns the bottom edge.
-
-    Labels hug the matrix unless `left` is given, which lines them up on that edge instead.
-    """
-    g = 4
-    my = ay + 14 + gap
-    lx, anchor = (mx - gap, "end") if left is None else (left, "start")
-    s.text("YOU \\ BOT", lx, ay, 2, "m", anchor=anchor)
-    for c, word in enumerate(("COOPERATE", "DEFECT")):
-        s.text(word, mx + g + c * (cw + g) + cw // 2, ay, 2, bold=True, anchor="middle")
-    for r, word in enumerate(("COOPERATE", "DEFECT")):
-        s.text(word, lx, my + g + r * (ch + g) + (ch - 14) // 2, 2, bold=True, anchor=anchor)
-    s.rect(mx, my, 2 * cw + 3 * g, 2 * ch + 3 * g, "i")
-    for r, you in enumerate("CD"):
-        for c, bot in enumerate("CD"):
-            x, y = mx + g + c * (cw + g), my + g + r * (ch + g)
-            hot = last is not None and (last["human"], last["bot"]) == (you, bot)
-            s.rect(x, y, cw, ch, "h" if hot else "p")
-            s.path(staircase(x, y, cw, ch, 4), "m" if hot else "g")
-            mine, theirs = pd.PAYOFFS[(you, bot)]
-            s.text(str(mine), x + 12, y + ch - 12 - 28, 4, "n" if hot else "i", bold=True)
-            s.text(str(theirs), x + cw - 12, y + 12, 3, "n" if hot else "m", bold=True,
-                   anchor="end")
-    return my + 2 * ch + 3 * g
-
-
-def tile(s: Svg, x: float, y: float, move: str) -> None:
-    """A move in the history: solid if it cooperated, hollow if it defected."""
-    if move == "C":
-        s.rect(x, y, 16, 16, "i")
-    else:
-        s.path(f"M{x} {y}h16v16h-16zM{x + 4} {y + 4}v8h8v-8z", "i", ' fill-rule="evenodd"')
-
-
-def your_move(s: Svg, x: float, y: float, extra: str = BLINKING) -> None:
-    s.add(f"<g{extra}>")
-    s.rect(x, y, 16, 16, "i")
-    s.rect(x + 2, y + 2, 12, 12, "a")
-    s.add("</g>")
-
-
-def history(s: Svg, state: dict, x0: float, x1: float, y: float) -> None:
-    """The most recent moves that fit between the edges, oldest first, then the round being
-    played right now."""
-    sx = x0 + text_width("HUMANS", 2, bold=True) + 16
-    slots = int(x1 - sx + 4) // 20
-    recent = state["history"][-(slots - 1):] if slots > 1 else []
-    for row, (key, label) in enumerate((("human", "HUMANS"), ("bot", "BOT"))):
-        ty = y + row * 24
-        s.text(label, x0, ty + 1, 2, "m", bold=True)
-        for i, move in enumerate(recent):
-            tile(s, sx + i * 20, ty, move[key])
-    nx = sx + len(recent) * 20
-    your_move(s, nx, y)
-    s.text("?", nx + 3, y + 25, 2, extra=BLINKING)
-
-
-def legend_tiles(s: Svg, x: float, y: float) -> None:
-    for move in "CD":
-        tile(s, x, y, move)
-        x += 24 + s.text(PAST[move], x + 24, y + 1, 2, "m") + 24
-
-
-def legend_turn(s: Svg, x: float, y: float, anchor: str = "start") -> None:
-    if anchor == "end":
-        x -= 24 + text_width("YOUR MOVE", 2) + 24 + 24 + text_width("BOT HAS CHOSEN", 2)
-    your_move(s, x, y, extra="")
-    x += 24 + s.text("YOUR MOVE", x + 24, y + 1, 2) + 24
-    s.text("?", x + 3, y + 1, 2)
-    s.text("BOT HAS CHOSEN", x + 24, y + 1, 2, "m")
-
 
 def card(s: Svg, top: float) -> None:
     """Frame everything drawn so far in a notched card from `top` to the bottom edge."""
@@ -250,8 +236,8 @@ def card(s: Svg, top: float) -> None:
 
 
 def score(s: Svg, state: dict, mid: float, y: float, room: float, sizes: tuple[int, ...]) -> None:
-    """67:62, the colon on `mid`, as large as `room` allows, vertically centred on a 64px row."""
-    humans, bot = (str(state["totals"][k]) for k in ("humans", "bot"))
+    """3:5, the colon on `mid`, as large as `room` allows, vertically centred on a 64px row."""
+    humans, bot = (str(state["wins"][k]) for k in ("humans", "bot"))
     longest = max(humans, bot, key=len)
     u = next((u for u in sizes if 2 * (text_width(longest, u, bold=True) + 3 * u) <= room),
              sizes[-1])
@@ -261,17 +247,127 @@ def score(s: Svg, state: dict, mid: float, y: float, room: float, sizes: tuple[i
     s.text(bot, mid + 3 * u, sy, u, bold=True)
 
 
+def your_move(s: Svg, x: float, y: float) -> None:
+    s.add(f"<g{BLINKING}>")
+    s.rect(x, y, 16, 16, "i")
+    s.rect(x + 2, y + 2, 12, 12, "a")
+    s.add("</g>")
+
+
+def bits_width(u: int, pitch: int) -> int:
+    """The nim-sum table's width: a column per bit of the largest heap."""
+    return (len(bin(nim.MAX_HEAP)) - 3) * pitch + 7 * u
+
+
+def heaps(s: Svg, state: dict, x: float, y: float, u: int, pitch: int, row_gap: int,
+          bits_x: float, bit_u: int, bit_pitch: int) -> float:
+    """Each heap as a row of matches, the ones already taken as ghosts, with its size in binary
+    on the right; then the nim-sum. Returns the bottom edge."""
+    mw, mh = len(sprites.MATCH[0]) * u, len(sprites.MATCH) * u
+    start = nim.STARTS[(state["game"] - 1) % len(nim.STARTS)]
+    width = len(bin(nim.MAX_HEAP)) - 2
+    for i, place in enumerate(2 ** b for b in reversed(range(width))):
+        s.text(str(place), bits_x + i * bit_pitch + 7 * bit_u // 2, y, 2, "m", anchor="middle")
+    y += 14 + 16
+    for row, (size, full) in enumerate(zip(state["heaps"], start)):
+        ry = y + row * (mh + row_gap)
+        cy = ry + (mh - 7 * 3) // 2
+        s.text(nim.HEAPS[row], x, cy, 3, bold=True)
+        for j in range(full):
+            pal = PAL if j < size else {"#": "g", "Y": "g"}
+            s.sprite(sprites.MATCH, x + 40 + j * pitch, ry, u, pal)
+        by = ry + (mh - 7 * bit_u) // 2
+        for i, bit in enumerate(format(size, f"0{width}b")):
+            s.text(bit, bits_x + i * bit_pitch + 7 * bit_u // 2, by, bit_u,
+                   "i" if bit == "1" else "m", bold=True, anchor="middle")
+    y += 3 * mh + 2 * row_gap + 16
+    total = nim.nim_sum(state["heaps"])
+    rule = bits_width(bit_u, bit_pitch)
+    s.rect(bits_x, y, rule, 4, "i")
+    y += 4 + 16
+    s.text("NIM-SUM", bits_x - 24, y + (7 * bit_u - 14) // 2, 2, "m", bold=True, anchor="end")
+    for i, bit in enumerate(format(total, f"0{width}b")):
+        bx = bits_x + i * bit_pitch
+        if bit == "1":
+            s.rect(bx - bit_u, y - bit_u, 7 * bit_u + 2 * bit_u, 9 * bit_u, "a")
+        s.text(bit, bx + 7 * bit_u // 2, y, bit_u, "k" if bit == "1" else "m", bold=True,
+               anchor="middle")
+    return y + 7 * bit_u
+
+
+def verdict(state: dict) -> str:
+    return ("NOT 0: A WINNING MOVE EXISTS" if nim.nim_sum(state["heaps"])
+            else "0: EVERY MOVE BREAKS IT")
+
+
+def facts(state: dict) -> str:
+    return f"GAME {state['game']} \u00b7 MOVE {state['move'] + 1}"
+
+
+def last_move(state: dict, room: int) -> list[tuple[str, str, bool]]:
+    """What just happened, as text runs on one line of `room`, the player's name shortened only
+    if it has to be."""
+    if not state["log"]:
+        return [("NO MOVES YET. BE THE FIRST TO PLAY", "i", False)]
+    e = state["log"][-1]
+    label = ("LAST" if e["winner"] is None else f"GAME {e['game']}", "m", False)
+    took = nim.describe(e["heap"], e["take"]).upper()
+    rest = (" TOOK THE LAST MATCH. HUMANS WIN" if e["winner"] == "humans" else
+            f" TOOK {took}, BOT TOOK " +
+            ("THE LAST MATCH" if e["winner"] == "bot" else nim.describe(*e["bot"]).upper()))
+    who = f"@{e['player']}"
+    while len(who) > 2 and runs_width([label, (who + rest, "i", False)], 2) > room:
+        who = who[:-1]
+    return [label, (who + rest, "i", False)]
+
+
+def log_indent(label: str) -> int:
+    """Where the phone's last-move lines start, a space after their label."""
+    return text_width(label, 2) + (SPACE_WIDTH + 2) * 2 if label else 0
+
+
+def last_move_mobile(state: dict, room: int) -> tuple[str, list[str]]:
+    """The phone's last move: a muted label, then a line per player beside it, so a login is
+    shortened only if it overflows a line on its own."""
+    if not state["log"]:
+        return "", ["NO MOVES YET. BE THE FIRST TO PLAY"]
+    e = state["log"][-1]
+    label = "LAST" if e["winner"] is None else f"GAME {e['game']}"
+    if e["winner"] == "bot":
+        return label, ["WON BY THE BOT"]
+    room -= log_indent(label)
+
+    def fits(line: str) -> bool:
+        return text_width(line, 2) <= room
+
+    who = f"@{e['player']}"
+    while not fits(who):
+        who = who[:-1]
+    if e["winner"] == "humans":
+        won = f"WON BY {who}"
+        return label, [won] if fits(won) else ["WON BY", who]
+    took = nim.describe(e["heap"], e["take"]).upper()
+    mine = f"{who} TOOK {took}"
+    bot = f"BOT TOOK {nim.describe(*e['bot']).upper()}"
+    return label, ([mine] if fits(mine) else [who, f"TOOK {took}"]) + [bot]
+
+
+def bot_sprite(mood: str) -> list[str]:
+    return sprites.BOT_SWEATING if mood == "sweating" else sprites.BOT
+
+
 def board(state: dict, theme: str) -> str:
-    top = 48  # breathing room under the tagline
+    top = 56 + 14 + 24  # the section label, then the card
     s = canvas(W, 0, board_alt(state), theme)
     s.css.extend([BLINK, *BOBBING])
-    last = state["history"][-1] if state["history"] else None
-    mood = pd.bot_mood(state)
+    section_label(s, "PLAY", 56)
+    mood = nim.bot_mood(state)
     x0, x1 = PAD, W - PAD
 
     y = top + 32
-    s.text("PRISONER'S DILEMMA", x0, y, 3, bold=True)
-    s.text(facts(state), x0, y + 33, 2, "m")
+    s.text("NIM", x0, y, 3, bold=True)
+    s.text(facts(state), x1, y + 4, 2, "m", anchor="end")
+    s.text("TAKE THE LAST MATCH TO WIN", x0, y + 33, 2, "m")
     y += 47 + 28
     s.rect(x0, y, x1 - x0, 4, "g")
 
@@ -280,155 +376,147 @@ def board(state: dict, theme: str) -> str:
     s.sprite(sprites.HUMAN, x0, y, 4, PAL, ' class="bob"')
     s.sprite(bot_sprite(mood), x1 - 64, y, 4, PAL, ' class="bob2"')
     s.text("HUMANS", x0 + 80, y + 10, 3, bold=True)
-    s.text("UNDECIDED", x0 + 80, y + 39, 2, "m")
+    s.text("YOUR MOVE", x0 + 80, y + 39, 2, "m")
     s.text("BOT", x1 - 80, y + 10, 3, bold=True, anchor="end")
     s.text(mood.upper(), x1 - 80, y + 39, 2, "m", anchor="end")
-    side = 80 + max(text_width("HUMANS", 3, bold=True), text_width("UNDECIDED", 2)) + 32
+    side = 80 + max(text_width("HUMANS", 3, bold=True), text_width("YOUR MOVE", 2)) + 32
     score(s, state, W // 2, y, x1 - x0 - 2 * side, (6, 5, 4))
-    y += 64 + 40
-
-    # the matrix, centred with its row labels
-    cw, ch, gap = 144, 88, 16
-    lw = text_width("COOPERATE", 2, bold=True)
-    gx = (W - (lw + gap + 2 * cw + 12)) // 2
-    bottom = matrix(s, last, gx + lw + gap, y, cw, ch, gap)
-
-    y = bottom + 24
-    if last:
-        runs(s, [("LAST ROUND", "m", False),
-                 (f" @{last['player'][:20]} {PAST[last['human']]}, BOT {PAST[last['bot']]}",
-                  "i", False)], W // 2, y, 2, "middle")
-    else:
-        s.text("NO MOVES YET. BE THE FIRST TO PLAY", W // 2, y, 2, anchor="middle")
-    y += 14 + 24
+    y += 64 + 32
     s.rect(x0, y, x1 - x0, 4, "g")
 
+    y += 4 + 32
+    # the humans' matches on the left, the bot's working on the right, under each side's face
+    bits_x = x1 - bits_width(4, 40)
+    bottom = heaps(s, state, x0, y, 6, 56, 20, bits_x, 4, 40)
+    s.text(verdict(state), bits_x - 24, bottom + 20, 2, "m", anchor="end")
+
+    y = bottom + 20 + 14 + 32
+    s.rect(x0, y, x1 - x0, 4, "g")
     y += 4 + 28
-    history(s, state, x0, x1, y)
-    y += 40 + 20
-    legend_tiles(s, x0, y)
-    legend_turn(s, x1, y, anchor="end")
-    s.height = y + 16 + 28
+    runs(s, last_move(state, x1 - x0), x0, y, 2)
+    y += 14 + 20
+    your_move(s, x0, y - 1)
+    s.text("YOUR MOVE: CLICK A KEY BELOW TO TAKE MATCHES", x0 + 28, y, 2)
+    s.height = y + 14 + 28
     card(s, top)
     return s.render()
 
 
 def board_mobile(state: dict) -> str:
-    """The same board for phones: title, then a face-off with the score, then the matrix."""
-    top = 32
+    top = 40 + 14 + 20
     s = canvas(M, 0, board_alt(state), "auto")
     s.css.extend([BLINK, *BOBBING])
-    last = state["history"][-1] if state["history"] else None
-    mood = pd.bot_mood(state)
+    section_label(s, "PLAY", 40)
+    mood = nim.bot_mood(state)
     x0, x1 = MPAD, M - MPAD
     mid = M // 2
 
     y = top + 20
-    s.text("PRISONER'S DILEMMA", x0, y, 3, bold=True)
-    y += 21 + 10
-    s.text(facts(state), x0, y, 2, "m")
+    s.text("NIM", x0, y, 3, bold=True)
+    s.text(facts(state), x1, y + 4, 2, "m", anchor="end")
+    y += 21 + 12
+    s.text("TAKE THE LAST MATCH TO WIN", x0, y, 2, "m")
     y += 14 + 18
     s.rect(x0, y, x1 - x0, 4, "g")
 
-    # face-off: the humans, the score, the bot
     y += 4 + 20
     s.sprite(sprites.HUMAN, x0 - 4, y, 4, PAL, ' class="bob"')
     s.sprite(bot_sprite(mood), x1 - 60, y, 4, PAL, ' class="bob2"')
     score(s, state, mid, y, x1 - x0 - 152, (5, 4, 3))
     s.text("HUMANS", x0, y + 76, 2, bold=True)
     s.text("BOT", x1, y + 76, 2, bold=True, anchor="end")
-    s.text("UNDECIDED", x0, y + 98, 2, "m")
+    s.text("YOUR MOVE", x0, y + 98, 2, "m")
     s.text(mood.upper(), x1, y + 98, 2, "m", anchor="end")
-
-    cw, ch = 116, 72
-    lw = text_width("COOPERATE", 2, bold=True)
-    gx = (M - (lw + 12 + 2 * cw + 12)) // 2
-    y = matrix(s, last, gx + lw + 12, y + 112 + 24, cw, ch, 12, left=gx) + 20
-    if last:
-        last_round_tiles(s, last, mid, y, x1 - x0)
-    else:
-        s.text("NO MOVES YET. BE THE FIRST", mid, y, 2, anchor="middle")
-    y += 14 + 20
+    y += 112 + 16
     s.rect(x0, y, x1 - x0, 4, "g")
 
     y += 4 + 20
-    history(s, state, x0, x1, y)
-    y += 40 + 16
-    legend_tiles(s, x0, y)
-    y += 16 + 12
-    legend_turn(s, x0, y)
-    s.height = y + 16 + 20
+    bits_x = x1 - bits_width(3, 28)
+    bottom = heaps(s, state, x0 + 4, y, 3, 26, 14, bits_x, 3, 28)
+    y = bottom + 16
+    s.text(verdict(state), x1, y, 2, "m", anchor="end")
+    y += 14 + 20
+    s.rect(x0, y, x1 - x0, 4, "g")
+    y += 4 + 20
+    label, lines = last_move_mobile(state, x1 - x0)
+    if label:
+        s.text(label, x0, y, 2, "m")
+    for i, line in enumerate(lines):
+        s.text(line, x0 + log_indent(label), y + 24 * i, 2)
+    y += 24 * (len(lines) - 1) + 14 + 16
+    your_move(s, x0, y - 1)
+    s.text("TAP A KEY BELOW TO TAKE MATCHES", x0 + 28, y, 2)
+    s.height = y + 14 + 20
     card(s, top)
     return s.render()
 
 
-def last_round_tiles(s: Svg, last: dict, cx: float, y: float, room: float) -> None:
-    """LAST ROUND @player [move] BOT [move] on one centred line, the moves drawn as history
-    tiles. The name is shortened if the line would not fit in `room`."""
-    player = f"@{last['player']}"
-    def width(name: str) -> int:
-        return (text_width("LAST ROUND", 2) + 12 + text_width(name, 2) + 8 + 16 + 16
-                + text_width("BOT", 2) + 8 + 16)
-    while width(player) > room and len(player) > 2:
-        player = player[:-1]
-    x = cx - width(player) // 2
-    x += s.text("LAST ROUND", x, y, 2, "m") + 12
-    x += s.text(player, x, y, 2) + 8
-    tile(s, x, y - 1, last["human"])
-    x += 16 + 16
-    x += s.text("BOT", x, y, 2) + 8
-    tile(s, x, y - 1, last["bot"])
-
-
-def facts(state: dict) -> str:
-    if not state["round"]:
-        return "ROUND 0 \u00b7 NO PLAYERS YET"
-    players = len(state["players"])
-    return (f"ROUND {state['round']} \u00b7 {players} PLAYER{'' if players == 1 else 'S'}"
-            f" \u00b7 {pd.cooperation_rate(state)}% CO-OP")
-
-
-def bot_sprite(mood: str) -> list[str]:
-    return sprites.BOT_SUSPICIOUS if mood == "suspicious" else sprites.BOT
-
-
 def board_alt(state: dict) -> str:
-    if not state["history"]:
-        return ("Prisoner's Dilemma against a bot. No moves yet: be the first to play "
-                "with the buttons below.")
-    last = state["history"][-1]
+    a, b, c = state["heaps"]
     return (
-        f"Prisoner's Dilemma against a bot, round {state['round']}. Last round: "
-        f"@{last['player']} {pd.PAST[last['human']]}, the bot {pd.PAST[last['bot']]}. "
-        f"Humans {state['totals']['humans']} points, bot {state['totals']['bot']}. "
-        f"{pd.cooperation_rate(state)}% of moves were cooperative. The bot is "
-        f"{pd.bot_mood(state)}."
+        f"Nim against a perfect bot, game {state['game']}, move {state['move'] + 1}. "
+        f"Heaps: A has {a}, B has {b}, C has {c}; nim-sum {nim.nim_sum(state['heaps'])}. "
+        f"Games won: humans {state['wins']['humans']}, bot {state['wins']['bot']}. "
+        f"{last_move_alt(state)} Pick a heap and how many matches to take with the keys below."
     )
 
 
-# ---------------------------------------------------------------------------- buttons
+def last_move_alt(state: dict) -> str:
+    if not state["log"]:
+        return "No moves yet."
+    e = state["log"][-1]
+    took = f"@{e['player']} took {nim.describe(e['heap'], e['take'])}"
+    if e["winner"] == "humans":
+        return f"Game {e['game']}: @{e['player']} took the last match, so humans won."
+    if e["winner"] == "bot":
+        return f"Game {e['game']}: {took}, then the bot took the last match and won."
+    return f"Last move: {took}, then the bot took {nim.describe(*e['bot'])}."
 
-def button(move: str, theme: str) -> str:
-    """Half of a full-width keypad under the board. Both keys look alike so neither choice
-    is nudged; only the tile and the word tell them apart."""
-    return key(move, theme, W // 2, top=8, h=56, side=8, u=3)
 
+# ----------------------------------------------------------------------------- keypad
 
-def button_mobile(move: str) -> str:
-    return key(move, "auto", (M + 1) // 2, top=12, h=60, side=8, u=2)
-
-
-def key(move: str, theme: str, width: int, *, top: int, h: int, side: int, u: int) -> str:
-    label = "\u25a0 COOPERATE" if move == "C" else "\u25a1 DEFECT"
-    s = canvas(width, top + h, "Cooperate" if move == "C" else "Defect", theme)
-    gutter = 8
-    x, w = (0, width - gutter // 2) if move == "C" else (gutter // 2, width - gutter // 2)
+def keycap(label: str, theme: str, width: int, *, top: int, h: int, side: int, u: int) -> str:
+    """One key of the keypad under the board, with an 8px gutter between neighbours."""
+    s = canvas(width, top + h, label.capitalize(), theme)
+    x, w = 4, width - 8
     fx, fy, fw, fh = x + 4, top + 4, w - 8, h - 8 - side
     s.path(notched(x, top, w, h, 4), "i")
     s.path(notched(fx, fy, fw, h - 8, 3), "o")  # the key's side
     s.path(notched(fx, fy, fw, fh, 3), "a")
     s.text(label, fx + fw / 2, fy + (fh - 7 * u) / 2, u, "k", bold=True, anchor="middle")
     return s.render()
+
+
+def take_key(n: int, theme: str) -> str:
+    return keycap(f"TAKE {n}", theme, KEY_W, top=8, h=56, side=8, u=3)
+
+
+def take_key_mobile(n: int) -> str:
+    return keycap(str(n), "auto", KEY_M, top=8, h=60, side=8, u=4)
+
+
+def row_label(text: str, theme: str, width: int, *, top: int, h: int, side: int, u: int,
+              cls: str = "i", bold: bool = True) -> str:
+    """The text in a keypad row that isn't a key: the heap's name, or EMPTY."""
+    s = canvas(width, top + h, text.capitalize(), theme)
+    s.text(text, 4, top + 4 + (h - 8 - side - 7 * u) / 2, u, cls, bold=bold)
+    return s.render()
+
+
+def heap_label(heap: int, theme: str) -> str:
+    return row_label(f"HEAP {nim.HEAPS[heap]}", theme, KEY_W, top=8, h=56, side=8, u=3)
+
+
+def heap_label_mobile(heap: int) -> str:
+    return row_label(nim.HEAPS[heap], "auto", KEY_M, top=8, h=60, side=8, u=4)
+
+
+def empty(theme: str) -> str:
+    return row_label("EMPTY", theme, KEY_W, top=8, h=56, side=8, u=3, cls="m", bold=False)
+
+
+def empty_mobile() -> str:
+    return row_label("EMPTY", "auto", KEY_M, top=8, h=60, side=8, u=2, cls="m", bold=False)
 
 
 def summary(theme: str) -> str:
@@ -447,7 +535,7 @@ def summary_mobile() -> str:
 
 def specs(theme: str) -> str:
     s = canvas(W, 0, specs_alt(), theme)
-    y = 32
+    y = 56  # with the 8px under the hero, the same 64px that sits above every section label
     section_label(s, "INTERESTS", y)
     y = interests(s, y + 14 + 24, W, cols=2, gap=32) + 64
     section_label(s, "TOOLS", y)
@@ -466,7 +554,7 @@ def specs(theme: str) -> str:
 
 def specs_mobile() -> str:
     s = canvas(M, 0, specs_alt(), "auto")
-    y = 24
+    y = 40  # 48px above every section label on phones
     section_label(s, "INTERESTS", y)
     y = interests(s, y + 14 + 24, M, cols=1, gap=24) + 48
     section_label(s, "TOOLS", y)

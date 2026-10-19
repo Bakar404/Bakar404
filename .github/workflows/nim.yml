@@ -1,4 +1,4 @@
-name: prisoners-dilemma
+name: nim
 
 on:
   issues:
@@ -12,12 +12,12 @@ permissions:
 # One game at a time. GitHub keeps only the newest queued run, which is fine:
 # every run drains all open moves, not just the issue that triggered it.
 concurrency:
-  group: prisoners-dilemma
+  group: nim
   cancel-in-progress: false
 
 jobs:
   play:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.issue.title, 'pd')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.issue.title, 'nim')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -30,12 +30,12 @@ jobs:
 
       - name: Commit the board
         run: |
-          git add data/pd.json assets/board-light.svg assets/board-dark.svg assets/board-phone.svg README.md
+          git add data/nim.json assets/board-light.svg assets/board-dark.svg assets/board-phone.svg README.md
           if git diff --cached --quiet; then exit 0; fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          round=$(python3 -c 'import json; print(json.load(open("data/pd.json"))["round"])')
-          git commit -q -m "pd: round $round"
+          at=$(python3 -c 'import json; e = json.load(open("data/nim.json"))["log"][-1]; print("game", e["game"], "move", e["move"])')
+          git commit -q -m "nim: $at"
           for attempt in 1 2 3; do
             git push -q && exit 0
             git pull -q --rebase

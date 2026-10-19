@@ -1,0 +1,17 @@
+{
+ "game": 1,
+ "move": 0,
+ "heaps": [
+  3,
+  4,
+  5
+ ],
+ "wins": {
+  "humans": 0,
+  "bot": 0
+ },
+ "players": {},
+ "last_issue": 0,
+ "log": [],
+ "results": []
+}

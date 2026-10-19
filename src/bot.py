@@ -1,11 +1,13 @@
-"""GitHub Action entry point for the Prisoner's Dilemma board.
+"""GitHub Action entry point for the Nim board.
 
-    python3 src/bot.py play  --plan PLAN.json   # play open `pd:` issues, redraw the board
+    python3 src/bot.py play  --plan PLAN.json   # play open `nim:` issues, redraw the board
     python3 src/bot.py reply --plan PLAN.json   # comment on and close those issues
 
 The workflow runs `play`, commits and pushes, then runs `reply`, so a player is only
-told about a round once it is on the board. Each run drains *every* open move, which
-keeps the game correct even when GitHub drops queued runs.
+told about a move once it is on the board. Each run drains *every* open move in issue
+order, which keeps the game correct even when GitHub drops queued runs. A move made on
+an old board (someone else moved first) is turned down rather than applied to a position
+its player never saw.
 
 For local testing: `--issues-file issues.json` replaces the API read and `--dry-run`
 prints replies instead of posting them.
@@ -20,7 +22,7 @@ import urllib.request
 from pathlib import Path
 
 import build
-import pd
+import nim
 
 API = "https://api.github.com"
 
@@ -34,7 +36,7 @@ def api(method: str, path: str, body: dict | None = None):
             "Authorization": f"Bearer {os.environ['GITHUB_TOKEN']}",
             "Accept": "application/vnd.github+json",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "prisoners-dilemma-bot",
+            "User-Agent": "nim-bot",
         },
     )
     with urllib.request.urlopen(request, timeout=30) as response:
@@ -56,25 +58,27 @@ def open_game_issues(repo: str) -> list[dict]:
 def play(issues: list[dict], board_url: str) -> list[dict]:
     """Resolve every pending move in issue order. Returns the replies to post."""
     state = build.load_state()
-    played = {entry["issue"]: entry for entry in state["history"]}
+    played = {entry["issue"]: entry for entry in state["log"]}
     replies, changed = [], False
     for issue in sorted(issues, key=lambda i: i["number"]):
-        if "pull_request" in issue or not pd.is_game_issue(issue["title"]):
+        if "pull_request" in issue or not nim.is_game_issue(issue["title"]):
             continue
         number, login = issue["number"], issue["user"]["login"]
         entry = played.get(number)
         if entry:
             # Already on the board; an earlier run must have failed before replying.
-            replies.append({"issue": number, "body": pd.reply(entry, state, board_url),
+            replies.append({"issue": number, "body": nim.reply(entry, state, board_url),
                             "reason": "completed"})
             continue
-        move = pd.parse_move(issue["title"])
-        if move is None or not pd.valid_login(login):
-            replies.append({"issue": number, "body": pd.invalid_reply(board_url),
+        move = nim.parse_move(issue["title"])
+        problem = ("unreadable" if move is None or not nim.valid_login(login)
+                   else nim.check(state, move))
+        if problem:
+            replies.append({"issue": number, "body": nim.rejection(problem, state, board_url),
                             "reason": "not_planned"})
             continue
-        entry = pd.play(state, login, move, number, issue["created_at"])
-        replies.append({"issue": number, "body": pd.reply(entry, state, board_url),
+        entry = nim.play(state, login, move["heap"], move["take"], number, issue["created_at"])
+        replies.append({"issue": number, "body": nim.reply(entry, state, board_url),
                         "reason": "completed"})
         changed = True
     if changed:
@@ -100,7 +104,7 @@ def reply(replies: list[dict], repo: str, dry_run: bool) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Prisoner's Dilemma bot")
+    parser = argparse.ArgumentParser(description="Nim bot")
     parser.add_argument("command", choices=("play", "reply"))
     parser.add_argument("--plan", required=True, type=Path)
     parser.add_argument("--issues-file", type=Path)
