@@ -1,17 +1,39 @@
 {
  "game": 1,
- "move": 0,
+ "move": 1,
  "heaps": [
-  3,
+  0,
   4,
-  5
+  4
  ],
  "wins": {
   "humans": 0,
   "bot": 0
  },
- "players": {},
- "last_issue": 0,
- "log": [],
+ "players": {
+  "Bakar404": 1
+ },
+ "last_issue": 3,
+ "log": [
+  {
+   "issue": 3,
+   "player": "Bakar404",
+   "game": 1,
+   "move": 1,
+   "heap": 0,
+   "take": 3,
+   "bot": [
+    2,
+    1
+   ],
+   "winner": null,
+   "at": "2026-10-19T02:13:59Z",
+   "heaps": [
+    0,
+    4,
+    4
+   ]
+  }
+ ],
  "results": []
 }
