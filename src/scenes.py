@@ -9,6 +9,7 @@ theme="auto": it carries both palettes and picks one itself.
 """
 from __future__ import annotations
 
+import re
 from itertools import combinations
 
 import nim
@@ -26,7 +27,7 @@ KEY_M = M // 6
 
 # Copy is stored in normal case for alt text; the pixel font renders it in capitals.
 NAME = "Ahmed Abdelsalam"
-LINE = "Hi, I'm Ahmed. I turn ideas into products, mostly with AI."
+LINE = "Hi, I'm Ahmed. I like to learn & build!"
 SUMMARY = "How does the bot decide?"
 INTERESTS = [  # caption lines, icon, its selected frame
     (("Being", "creative"), sprites.PEN_NIB, sprites.PEN_NIB_ON),
@@ -63,13 +64,13 @@ WAVING = [
     "33.333%{opacity:0}41.667%{opacity:1}50%{opacity:0}}",
     "@keyframes lids{0%{opacity:1}72%{opacity:0}75%{opacity:1}}",
 ]
-TAIL = [  # the speech box's tail, pointing at the speaker; column 5 is the box's left edge
-    ".....#",
-    "....#p",
-    "...#pp",
-    "..#ppp",
-    ".#pppp",
+TAIL = [  # the speech box's tail, pointing up at the speaker; column 5 is the box's left edge
     "######",
+    ".#pppp",
+    "..#ppp",
+    "...#pp",
+    "....#p",
+    ".....#",
 ]
 NEXT = {(0, 0), (1, 0), (2, 0), (3, 0), (4, 0), (1, 1), (2, 1), (3, 1), (2, 2)}  # the RPG ▼
 
@@ -164,7 +165,7 @@ def avatar(s: Svg, x: float, y: float, u: int) -> None:
     left, right = sprites.AVATAR_HANDS
     s.sprite(left, hx, hy, u, pal, f' style="animation:wave-l {WAVE}s step-end infinite"')
     s.sprite(right, hx, hy, u, pal, f' style="opacity:0;animation:wave-r {WAVE}s step-end infinite"')
-    s.path(cells_to_path(sprites.AVATAR_EYES, x, y, u), "specs",
+    s.path(cells_to_path(sprites.AVATAR_EYES, x, y, u), "eyes",
            f' style="animation:lids {WAVE}s step-end infinite"')
 
 
@@ -172,7 +173,7 @@ def speech(s: Svg, lines: list[str], x: float, y: float, w: float, u: int, pad: 
            tail_y: float) -> float:
     """An RPG dialog box that types `lines` out, then blinks its ▼. Returns its bottom edge."""
     lh = 7 * u + 4 * u
-    h = 8 + 2 * pad + len(lines) * lh - 4 * u
+    h = speech_height(len(lines), u, pad)
     s.path(notched(x, y, w, h, 4), "i")
     s.path(notched(x + 4, y + 4, w - 8, h - 8, 4), "p")
     s.sprite(TAIL, x - 20, tail_y, 4, {"#": "i", "p": "p"})
@@ -185,21 +186,27 @@ def speech(s: Svg, lines: list[str], x: float, y: float, w: float, u: int, pad: 
     return y + h
 
 
+def speech_height(lines: int, u: int, pad: int) -> float:
+    return 8 + 2 * pad + lines * 11 * u - 4 * u
+
+
 def wrap(text: str, width: float, u: int) -> list[str]:
-    return flow(text.split(), width, u, sep=" ")
+    """Break between sentences, then wherever the box runs out of room."""
+    return [line for sentence in re.split(r"(?<=[.!?]) ", text)
+            for line in flow(sentence.split(), width, u, sep=" ")]
 
 
 def hero(theme: str) -> str:
-    u = 5
+    u, tu, pad = 5, 4, 20  # tu: the dialog text's pixel
     aw, ah = len(sprites.AVATAR[0]) * u, len(sprites.AVATAR) * u
     s = canvas(W, 0, hero_alt(), theme)
     x = aw + 32
     display(s, NAME, x, u + 8, 6)
-    pad = 20
-    lines = wrap(LINE, W - x - 8 - 2 * pad, 3)
-    top = u + 8 + 42 + 24
-    bottom = speech(s, lines, x, top, W - x, 3, pad, tail_y=top + 12)
-    ay = max(0, bottom - ah)  # the portrait stands on the box's baseline
+    lines = wrap(LINE, W - x - 8 - 2 * pad, tu)
+    # under the name, and low enough that the box's baseline is the one he stands on
+    top = max(u + 8 + 42 + 24, ah - speech_height(len(lines), tu, pad))
+    bottom = speech(s, lines, x, top, W - x, tu, pad, tail_y=top + 8)
+    ay = max(0, bottom - ah)
     avatar(s, 0, ay, u)
     s.height = int(max(bottom, ay + ah)) + 8
     return s.render()
@@ -217,7 +224,7 @@ def hero_mobile() -> str:
     avatar(s, 0, y, u)
     x, pad = aw + 20, 14
     lines = wrap(LINE, M - x - 8 - 2 * pad, 2)
-    bottom = speech(s, lines, x, y + 3 * u, M - x, 2, pad, tail_y=y + 14 * u)
+    bottom = speech(s, lines, x, y + 3 * u, M - x, 2, pad, tail_y=y + sprites.AVATAR_MOUTH * u)
     s.height = int(max(bottom, y + ah)) + 8
     return s.render()
 
