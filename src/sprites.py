@@ -141,32 +141,35 @@ MATRIX = [
     "###############",
 ]
 
-# Ahmed, waving: dark hair, glasses, a full beard, a navy blazer over a light-blue shirt.
+# Ahmed, waving: curly black hair worn up, glasses, a short full black beard, a navy blazer over
+# a light-blue shirt.
 # Unlike the 1-bit art it keeps its colours in both themes; only the outline ('o') follows the
 # theme, which gives it a sticker edge on dark backgrounds.
 AVATAR = [
-    "......................................",
-    "......................ooooooo.........",
-    "....................ooHHHHHHHoo.......",
-    "...................oHHHhhhHHHHHo......",
-    "..................oHHhhHHHHHHHHHo.....",
-    ".................oHHhHHHHHHHHHHHo.....",
+    ".......................oooo...........",
+    "..................ooooohhhHooooo......",
+    ".................ohhhHoHHHKohhHHo.....",
+    "................ohHHKKhhHHKKhhHHKo....",
+    "...............ohHKhhHHHKHHhhHHKHHo...",
+    "...............oHHhHHHKhhHHHKHHhhKo...",
+    "...............oHhhHHHKhHHHHKhhHHKo...",
+    "................oHHKHhhHHKHhhHHKHo....",
+    ".................oKHHHHKHHHHHKHHo.....",
+    ".................oHHHKHHHHKHHHHHo.....",
     ".................oHHHHHHHHHHHHHHo.....",
-    ".................oHHHHHHHHHHHHHHo.....",
-    ".................oHHSHHSSSSHHSHHo.....",
     ".................oHSSSSSSSSSSSSHo.....",
     ".................oHGGGGGSSGGGGGHo.....",
-    "................osSGSsSGGGGSsSGSso....",
-    "................osSGSSSGSSGSSSGSso....",
-    "................osSSGGGSssSGGGSSso....",
-    ".................obSSSSSssSSSSSbo.....",
-    ".................obSSSBBBBBBSSSbo.....",
-    ".................obbSBMWWWWMBSbbo.....",
-    ".................obbbBBBBBBBBbbbo.....",
-    "..................obbbBBBBBBbbbo......",
-    ".....oNNNNNo.......obbBBBBBBbbo.......",
-    ".....oNNNnNo........oxBBBBBBxo........",
-    ".....oNNNnNo..........xxxxxx..........",
+    "................osbGSsSGGGGSsSGbso....",
+    "................osbGSSSGSSGSSSGbso....",
+    "................osbSGGGSssSGGGSbso....",
+    ".................oBbSSSSssSSSSbBo.....",
+    ".................oBbSSBBBBBBSSbBo.....",
+    ".................oBbbBMWWWWMBbbBo.....",
+    ".................oBbbbBBBBBBbbbBo.....",
+    "..................oBbbbbBBbbbbBo......",
+    ".....oNNNNNo.......oBBbbbbbbBBo.......",
+    ".....oNNNnNo........oBBBBBBBBo........",
+    ".....oNNNnNo..........osssso..........",
     ".....oNNNnNo..........oSSSSo..........",
     ".....oNNNnNo....oNNNnTTSSSSTTnNNNo....",
     ".....oNNNnNo..oNNNNNNnTTSSTTnNNNNNNo..",
@@ -204,12 +207,12 @@ _HAND_RIGHT = [
     "....oTTTTTo...",
 ]
 AVATAR_HANDS = (_HAND_LEFT, _HAND_RIGHT)
-AVATAR_HAND_AT = (1, 9)
-AVATAR_EYES = [(21, 11), (28, 11)]
+AVATAR_HAND_AT = (1, 11)
+AVATAR_EYES = [(21, 13), (28, 13)]
 AVATAR_COLOURS = {  # sprite char: (CSS class, colour)
-    "H": ("hair", "#2e1d15"), "h": ("hairlit", "#543a2e"),
+    "H": ("hair", "#1d1b22"), "h": ("hairlit", "#46424f"), "K": ("hairdeep", "#0a090c"),
     "S": ("skin", "#d6a086"), "s": ("skindim", "#b07864"),
-    "B": ("beard", "#3a2720"), "b": ("stubble", "#7a5446"), "x": ("jaw", "#281a16"),
+    "B": ("beard", "#1d1b22"), "b": ("stubble", "#6e5a56"),
     "G": ("specs", "#181212"), "E": ("specs", "#181212"),
     "M": ("lips", "#7a342e"), "W": ("teeth", "#ffffff"),
     "N": ("navy", "#1e2746"), "n": ("lapel", "#344470"), "T": ("shirt", "#b6ceec"),

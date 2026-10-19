@@ -35,8 +35,8 @@ INTERESTS = [  # caption lines, icon, its selected frame
     (("Game", "theory"), sprites.MATRIX, sprites.MATRIX_ON),
 ]
 TOOLS = [
-    ("AI + agents", ["MCP", "LLM agents", "Multi-agent orchestration", "Agent evals",
-                     "Microsoft Agent Framework", "Anthropic API", "Azure AI"]),
+    ("AI + agents", ["MCP", "Multi-agent orchestration", "Agent evals",
+                     "Microsoft Agent Framework", "Azure AI"]),
     ("Languages", ["Python", "TypeScript", "JavaScript", "Swift", "SQL", "C++", "R", "DAX",
                    "HTML/CSS"]),
     ("Build", ["React", "Next.js", "Vite", "Tailwind", "Node.js", "FastAPI", "SwiftUI",
@@ -217,7 +217,7 @@ def hero_mobile() -> str:
     avatar(s, 0, y, u)
     x, pad = aw + 20, 14
     lines = wrap(LINE, M - x - 8 - 2 * pad, 2)
-    bottom = speech(s, lines, x, y + u, M - x, 2, pad, tail_y=y + 12 * u)
+    bottom = speech(s, lines, x, y + 3 * u, M - x, 2, pad, tail_y=y + 14 * u)
     s.height = int(max(bottom, y + ah)) + 8
     return s.render()
 
