@@ -608,13 +608,14 @@ def interests(s: Svg, y: float, width: int, cols: int, gap: int) -> float:
     return y + (n - 1) // cols * (box + gap) + box
 
 
-def flow(items: list[str], width: int, u: int, sep: str = " \u00b7 ") -> list[str]:
+def flow(items: list[str], width: int, u: int, sep: str = " \u00b7 ",
+         bold: bool = False) -> list[str]:
     """Break items into as few lines as fit `width`, as even as possible so no item is
     stranded on a line of its own. Earlier lines take the extra when there is a tie."""
     def widest(cuts: tuple[int, ...]) -> tuple[int, list[str]]:
         cuts = tuple(sorted(cuts))
         lines = [sep.join(items[a:b]) for a, b in zip((0, *cuts), (*cuts, len(items)))]
-        return max(text_width(line, u) for line in lines), lines
+        return max(text_width(line, u, bold) for line in lines), lines
 
     for n in range(len(items)):
         splits = [widest(cuts) for cuts in combinations(range(len(items) - 1, 0, -1), n)]
@@ -630,3 +631,113 @@ def specs_alt() -> str:
     tools = " ".join(f"{label}: {', '.join(items)}." for label, items in TOOLS)
     return (f"Interests: {', '.join(names[:-1])} and {names[-1]}. Tools. {tools} "
             f"{ANYTHING}.")
+
+
+# --------------------------------------------------------------------------- projects
+
+# (repo, title, blurb, stack). The whole card links to the repo; keep blurbs to three lines.
+PROJECTS = [
+    ("cairn", "Cairn", "An AI tutor that runs on your GitHub Copilot subscription.",
+     "TypeScript · Next.js · Electron"),
+    ("markov-agent-orchestrator", "Markov arena",
+     "Tests whether a team of AI agents really beats a single agent on your task.",
+     "Python · FastAPI · Next.js"),
+    ("backward-induction-interp", "Backward induction",
+     "Game theory reveals what a model decides inside, versus what its reasoning says.",
+     "Python · Interpretability"),
+    ("lsat-tracker", "LSAT tracker",
+     "LawHub score reports in, a private analytics dashboard out.",
+     "Python · FastAPI · React"),
+    ("VolC", "VolC", "Per-app volume control from the macOS menu bar.",
+     "Swift · SwiftUI · CoreAudio"),
+    ("RunTrack", "RunTrack", "Race training plans and a run log, from 5K to the marathon.",
+     "JavaScript · Chart.js · Firebase"),
+]
+CARD_GAP = 24  # between the two cards of a desktop row
+LINKS = [("LinkedIn", "https://www.linkedin.com/in/ahmedabdelsalam02/"),
+         ("All repos", "https://github.com/Bakar404?tab=repositories")]
+
+
+def project_alt(i: int) -> str:
+    _, title, blurb, stack = PROJECTS[i]
+    return f"{title}: {blurb} Built with {stack.replace(' · ', ', ')}."
+
+
+def projects_label(theme: str) -> str:
+    s = canvas(W, 64 + 14 + 16, "Projects", theme)
+    section_label(s, "PROJECTS", 64)
+    return s.render()
+
+
+def projects_label_mobile() -> str:
+    s = canvas(M, 48 + 14 + 16, "Projects", "auto")
+    section_label(s, "PROJECTS", 48)
+    return s.render()
+
+
+def _card_lines(i: int, room: float) -> tuple[list[str], list[str]]:
+    _, _, blurb, stack = PROJECTS[i]
+    return wrap(blurb, room, 2), flow(stack.split(" · "), room, 2)
+
+
+def _card(i: int, theme: str, width: int, x: float, w: float) -> str:
+    """A notched panel: title in the accent bar, the blurb, then the stack in muted ink.
+    Every card in a layout gets the height of the tallest, so rows line up."""
+    pad, bar = 16, 40
+    room = w - 8 - 2 * pad
+    tallest = max(sum(map(len, _card_lines(j, room))) for j in range(len(PROJECTS)))
+    h = 4 + bar + pad + tallest * 22 + 16 + pad
+    s = canvas(width, h + 16, project_alt(i), theme)
+    s.path(notched(x, 0, w, h, 4), "i")
+    s.path(notched(x + 4, 4, w - 8, h - 8, 3), "p")
+    s.rect(x + 4 + 6, 4, w - 8 - 12, bar, "a")
+    s.text(PROJECTS[i][1], x + 4 + pad, 4 + (bar - 14) / 2, 2, "k", bold=True)
+    s.text("→", x + w - 4 - pad, 4 + (bar - 14) / 2, 2, "k", bold=True, anchor="end")
+    blurb, stack = _card_lines(i, room)
+    y = 4 + bar + pad
+    for line in blurb:
+        s.text(line, x + 4 + pad, y, 2)
+        y += 22
+    y += 16
+    for line in stack:
+        s.text(line, x + 4 + pad, y, 2, "m")
+        y += 22
+    return s.render()
+
+
+def project_card(i: int, theme: str) -> str:
+    """Half the README wide; the left card hugs the left edge and the right one the right."""
+    half = W // 2
+    w = half - CARD_GAP // 2
+    return _card(i, theme, half, 0 if i % 2 == 0 else CARD_GAP // 2, w)
+
+
+def project_card_mobile(i: int) -> str:
+    """Phones keep the desktop's two cards per row (every image keeps its share of the README),
+    so each tile is M / 2 wide: just the title on the accent panel and the main language."""
+    half, gap, pad = M // 2, 12, 12
+    x = 0 if i % 2 == 0 else gap // 2
+    w = half - gap // 2
+    room = w - 8 - 2 * pad
+    titles = [flow(PROJECTS[j][1].split(), room, 2, sep=" ", bold=True)
+              for j in range(len(PROJECTS))]
+    rows = max(map(len, titles))
+    bar = pad + rows * 22 - 8 + pad
+    h = 4 + bar + 12 + 14 + 12 + 4
+    s = canvas(half, h + 12, project_alt(i), "auto")
+    s.path(notched(x, 0, w, h, 4), "i")
+    s.path(notched(x + 4, 4, w - 8, h - 8, 3), "p")
+    s.rect(x + 4 + 6, 4, w - 8 - 12, bar, "a")
+    for j, line in enumerate(titles[i]):
+        s.text(line, x + 4 + pad, 4 + pad + j * 22, 2, "k", bold=True)
+    s.text(PROJECTS[i][3].split(" · ")[0], x + 4 + pad, 4 + bar + 12, 2, "m")
+    s.text("→", x + w - 4 - pad, 4 + bar + 12, 2, "i", bold=True, anchor="end")
+    return s.render()
+
+
+def link_key(label: str, theme: str) -> str:
+    return keycap(f"{label} ↗", theme, W // 3, top=24, h=56, side=8, u=2)
+
+
+def link_key_mobile(label: str) -> str:
+    return keycap(label, "auto", M // 3, top=16, h=56, side=8, u=2)
