@@ -1,3 +1,4 @@
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -41,6 +42,31 @@ class LastMoveTests(unittest.TestCase):
                     desktop = " ".join(t for t, _, _ in scenes.last_move(state, ROOM))
                     self.assertIn(f"@{login}", desktop)
                     self.assertIn(f"@{login}", " ".join(self.phone_lines(state)))
+
+
+class ProjectTests(unittest.TestCase):
+    def test_titles_fit_their_cards_at_both_sizes(self):
+        desktop = scenes.W // 2 - scenes.CARD_GAP // 2 - 8 - 2 * 16 - text_width("→", 2, True) - 8
+        phone = scenes.M // 2 - 12 // 2 - 8 - 2 * 12
+        for _, title, *_ in scenes.PROJECTS:
+            with self.subTest(title=title):
+                self.assertLessEqual(text_width(title, 2, True), desktop)
+                for word in title.split():
+                    self.assertLessEqual(text_width(word, 2, True), phone)
+
+    def test_cards_in_a_layout_share_one_height(self):
+        for render in (lambda i: scenes.project_card(i, "light"), scenes.project_card_mobile):
+            heights = {re.search(r'height="(\d+)"', render(i)).group(1)
+                       for i in range(len(scenes.PROJECTS))}
+            self.assertEqual(len(heights), 1)
+
+    def test_readme_links_every_project_and_link(self):
+        import build
+        readme = (build.ROOT / "README.md").read_text()
+        for repo, *_ in scenes.PROJECTS:
+            self.assertIn(f'href="https://github.com/{build.OWNER}/{repo}"', readme)
+        for _, url in scenes.LINKS:
+            self.assertIn(url, readme)
 
 
 if __name__ == "__main__":
