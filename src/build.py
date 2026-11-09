@@ -27,17 +27,19 @@ STATE = ROOT / "data" / "nim.json"
 README = ROOT / "README.md"
 THEMES = ("light", "dark")
 REPO = "Bakar404/Bakar404"
+OWNER = REPO.split("/")[0]
 PHONE = "(max-width: 600px)"
 GAME = re.compile(r"<!-- game -->\n.*?\n<!-- /game -->", re.S)
 SIZE = re.compile(r'<svg [^>]*width="(\d+)"')
 
 # The page is one raw HTML block, so Markdown's line-break rules never touch it. The game sits
-# last, so visitors meet Ahmed before they get absorbed in it; the Action rewrites only the part
+# last, so visitors meet Ahmed and his projects before they get absorbed in it; the Action rewrites only the part
 # between the game markers.
 TEMPLATE = """\
 <p>
 {hero}<br>
 {specs}<br>
+{projects}<br>
 {game}
 </p>
 
@@ -127,6 +129,28 @@ def write_board(state: dict, readme: Path | None = None) -> None:
     readme.write_text(text)
 
 
+def slug(label: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-")
+
+
+def projects(widths: dict[str, int]) -> str:
+    """The section label, two linked cards per row, then the link keys. On phones every card
+    is a full-width row of its own, because its phone art is M wide and the README scales it."""
+    out = [picture("projects", "Projects", widths["projects"])]
+    cards = [
+        f'<a href="https://github.com/{OWNER}/{repo}">'
+        + picture(f"project-{repo.lower()}", scenes.project_alt(i),
+                  widths[f"project-{repo.lower()}"]) + "</a>"
+        for i, (repo, *_) in enumerate(scenes.PROJECTS)
+    ]
+    out += ["".join(cards[i:i + 2]) for i in range(0, len(cards), 2)]
+    out.append("".join(
+        f'<a href="{html.escape(url)}">'
+        + picture(f"link-{slug(label)}", label, widths[f"link-{slug(label)}"]) + "</a>"
+        for label, url in scenes.LINKS))
+    return "<br>\n".join(out)
+
+
 # name: (desktop scene, phone scene)
 STATIC = {
     "hero": (scenes.hero, scenes.hero_mobile),
@@ -139,6 +163,13 @@ STATIC = {
        for n in range(1, nim.MAX_HEAP + 1)},
     "empty": (scenes.empty, scenes.empty_mobile),
     "summary": (scenes.summary, scenes.summary_mobile),
+    "projects": (scenes.projects_label, scenes.projects_label_mobile),
+    **{f"project-{repo.lower()}": (lambda theme, i=i: scenes.project_card(i, theme),
+                                   lambda i=i: scenes.project_card_mobile(i))
+       for i, (repo, *_) in enumerate(scenes.PROJECTS)},
+    **{f"link-{slug(label)}": (lambda theme, label=label: scenes.link_key(label, theme),
+                               lambda label=label: scenes.link_key_mobile(label))
+       for label, _ in scenes.LINKS},
 }
 
 
@@ -159,6 +190,7 @@ def write_readme(state: dict, widths: dict[str, int]) -> None:
     README.write_text(TEMPLATE.format(
         hero=picture("hero", scenes.hero_alt(), widths["hero"]),
         specs=picture("specs", scenes.specs_alt(), widths["specs"]),
+        projects=projects(widths),
         game=game(state),
         summary=picture("summary", scenes.SUMMARY, widths["summary"], align=False),
     ))
