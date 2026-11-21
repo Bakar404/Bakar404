@@ -1,20 +1,20 @@
 {
- "game": 2,
- "move": 2,
+ "game": 3,
+ "move": 0,
  "heaps": [
-  0,
   2,
-  2
+  4,
+  5
  ],
  "wins": {
   "humans": 0,
-  "bot": 1
+  "bot": 2
  },
  "players": {
-  "Bakar404": 4,
+  "Bakar404": 5,
   "stephschofield": 1
  },
- "last_issue": 8,
+ "last_issue": 9,
  "log": [
   {
    "issue": 3,
@@ -110,11 +110,36 @@
     2,
     2
    ]
+  },
+  {
+   "issue": 9,
+   "player": "Bakar404",
+   "game": 2,
+   "move": 3,
+   "heap": 2,
+   "take": 2,
+   "bot": [
+    1,
+    2
+   ],
+   "winner": "bot",
+   "at": "2026-11-21T23:53:03Z",
+   "heaps": [
+    0,
+    0,
+    0
+   ]
   }
  ],
  "results": [
   {
    "game": 1,
+   "winner": "bot",
+   "moves": 3,
+   "player": "Bakar404"
+  },
+  {
+   "game": 2,
    "winner": "bot",
    "moves": 3,
    "player": "Bakar404"
